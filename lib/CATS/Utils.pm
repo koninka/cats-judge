@@ -6,6 +6,7 @@ BEGIN {
     @ISA = qw(Exporter);
     @EXPORT = qw(
         coalesce
+        get_absoulte_file_path
         split_fname
         escape_html
         escape_xml
@@ -21,11 +22,20 @@ BEGIN {
 use strict;
 use warnings;
 
+use File::Spec;
 use Text::Balanced qw(extract_tagged extract_bracketed);
 use Digest::MD5;
 
 
 sub coalesce { defined && return $_ for @_ }
+
+
+sub get_absoulte_file_path
+{
+    my ($dir, $fname) = @_;
+    my ($volume, $directory) = File::Spec->splitpath($dir, 1);
+    return File::Spec->catpath($volume, $directory, $fname);
+}
 
 
 sub split_fname
