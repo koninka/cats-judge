@@ -5,6 +5,7 @@ use strict;
 use File::Spec;
 use constant FS => 'File::Spec';
 use File::NCopy qw(copy);
+use Getopt::Long qw(GetOptions);
 
 use lib 'lib';
 use CATS::Constants;
@@ -13,6 +14,7 @@ use CATS::Utils qw(split_fname);
 use CATS::Judge::Config;
 use CATS::Judge::Log;
 use CATS::Judge::Server;
+use CATS::Judge::Local;
 
 use CATS::Spawner;
 
@@ -944,19 +946,44 @@ sub main_loop
     }
 }
 
+sub usage
+{
+    print "Unknown option: @_\n" if ( @_ );
+    print "usage: judge [--source <path_to_source_code> --dir <path_to_problem_dir> --de <de_identifier>] [--help|-?]\n";
+    exit;
+}
+
+my ($dir, $source, $help, $de);
+GetOptions('source=s' => \$source, 'dir=s' => \$dir, 'de=i' => \$de, 'help|?' => \$help);
+usage if defined $help;
+
 $log->init;
 {
     my $judge_cfg = 'config.xml';
     open my $cfg_file, '<', $judge_cfg or die "Couldn't open $judge_cfg";
     $cfg->read_file($cfg_file);
 }
+
 CATS::DB::sql_connect;
-$judge = CATS::Judge::Server->new(name => $cfg->name);
+
+my $local = defined $source && defined $dir && defined $de;
+if ($local) {
+    $judge = CATS::Judge::Local->new(name => $cfg->name, dir => $dir, source => $source, de => $de);
+} else {
+    $judge = CATS::Judge::Server->new(name => $cfg->name);
+}
+
 $judge->auth;
 $judge->set_DEs($cfg->DEs);
 $judge_de_idx{$_->{id}} = $_ for values %{$cfg->DEs};
 $spawner = CATS::Spawner->new(cfg => $cfg, log => $log);
-main_loop;
+
+if ($local) {
+    process_request($judge->select_request);
+} else {
+    main_loop;
+}
+
 CATS::DB::sql_disconnect;
 
 1;
