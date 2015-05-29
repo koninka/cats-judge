@@ -373,7 +373,6 @@ sub prepare_tests
 {
     my ($pid, $input_fname, $output_fname, $tlimit, $mlimit, $run_method) = @_;
     my $tests = $judge->get_problem_tests($pid);
-
     if (!@$tests) {
         log_msg("no tests defined\n");
         return undef;
@@ -516,13 +515,7 @@ sub initialize_problem
 
         if (my $compile_cmd = get_cmd('compile', $ps->{de_id}))
         {
-            my $sp_report = $spawner->execute($compile_cmd, { full_name => $fname, name => $name })
-                or return undef;
-            if ($sp_report->{TerminateReason} ne $cats::tm_exit_process || $sp_report->{ExitStatus} ne '0')
-            {
-                log_msg("*** compilation error ***\n");
-                return undef;
-            }
+            my $sp_report = $spawner->execute($compile_cmd, { full_name => $fname, name => $name });
         }
 
         if ($ps->{stype} == $cats::generator && $p->{formal_input}) {
@@ -882,7 +875,7 @@ sub process_request
         return;
     }
 
-    $problem_sources = $judge->get_problem_sources($r->{problem_id});
+    $problem_sources = $judge->get_problem_sources($r->{problem_id}, modules => $cfg->modulesdir);
     CATS::SourceManager::save($problem_sources, $cfg->modulesdir);
     # Ignore unsupported DEs for requests, but demand every problem to be installable on every judge.
     my %unsupported_DEs =
@@ -909,8 +902,8 @@ sub process_request
     }
     $judge->save_log_dump($r, $log->{dump});
     $judge->set_request_state($r, $state, %$r);
-    return if $state == $cats::st_unhandled_error;
 
+    return if $state == $cats::st_unhandled_error;
     log_msg("test log:\n");
     if ($r->{fname} =~ /[^_a-zA-Z0-9\.\\\:\$]/) {
         log_msg("renamed from '$r->{fname}'\n");

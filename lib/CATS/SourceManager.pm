@@ -71,7 +71,6 @@ sub load {
 
     my $parser = new XML::Parser::Expat;
     $parser->setHandlers(
-        Start => \&on_start_tag,
         End => \&on_end_tag,
         Char => sub { $stml .= $_[1] if defined $stml || (!defined $stml && $_[1] ne "\n") },
     );
